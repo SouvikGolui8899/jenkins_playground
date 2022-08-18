@@ -1,0 +1,48 @@
+version: "3"
+
+services:
+  jenkins-docker:
+    image: docker:dind
+    container_name: jenkins-docker
+    privileged: true
+    networks:
+      jenkins:
+        aliases:
+          - docker
+    ports:
+      - "${DOCKER_DIND_HOST_PORT}:2376"
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    volumes:
+      - ${VOLUME_DIR}/jenkins-docker-certs:/certs/client
+      - ${VOLUME_DIR}/jenkins-data:/var/jenkins_home
+    command: --storage-driver=overlay2
+
+  jenkins-server:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: jenkins-server
+    image: jenkins-image:2.332.2
+    networks:
+      jenkins:
+    ports:
+      - "${JENKINS_HOST_PORT_1}:8080"
+      - "${JENKINS_HOST_PORT_2}:50000"
+    depends_on:
+      - jenkins-docker
+    environment:
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: 1
+    volumes:
+      - ${VOLUME_DIR}/jenkins-data:/var/jenkins_home
+      - ${VOLUME_DIR}/jenkins-docker-certs:/certs/client:ro
+
+
+networks:
+  jenkins:
+
+volumes:
+  jenkins-docker-certs:
+  jenkins-data:
